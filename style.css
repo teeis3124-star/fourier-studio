@@ -54,3 +54,37 @@ body[data-mode="two"] .mode-one{display:none!important}
 #exportComplexGifBtn.busy{opacity:.65;cursor:progress}
 .export-note{font-size:12px;color:#7488aa}
 @media(max-width:760px){.mode-help{width:100%;margin-left:0}}
+
+.fft-panel{margin-bottom:18px;overflow:hidden}
+.fft-import,.fft-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.fft-import{margin-bottom:10px}
+.fft-import button,.fft-controls button,.fft-subpanel button{background:#0d1730;color:#eaf1ff;border:1px solid #334a78;border-radius:10px;padding:9px 12px;cursor:pointer}
+.fft-paste{width:100%;resize:vertical;min-height:112px;margin:8px 0 12px;background:#07101d;color:#dbe7fb;border:1px solid #2b416a;border-radius:12px;padding:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none}
+.fft-paste:focus{border-color:#6592d7}
+.fft-controls{padding:12px;background:#0a1428;border:1px solid #22385f;border-radius:14px}
+.fft-controls label{display:flex;gap:8px;align-items:center;color:#b9c8e4;font-size:13px}
+.fft-controls input[type=number],.fft-controls select{background:#07101d;color:#edf3ff;border:1px solid #334a78;border-radius:9px;padding:8px 9px}
+.fft-controls input[type=number]{width:110px}
+.fft-controls input[type=range]{width:140px}
+.check-label{padding:7px 9px;background:#091326;border-radius:9px}
+.fft-status{margin:10px 0;color:#9fb6da;font-size:12px}
+.fft-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-bottom:14px}
+.fft-stats div{background:#091326;border:1px solid #1e3257;border-radius:12px;padding:10px}
+.fft-stats span{display:block;color:#7f94b7;font-size:11px}
+.fft-stats strong{display:block;margin-top:4px;color:#e7efff;font-size:16px;font-variant-numeric:tabular-nums}
+.fft-grid{grid-template-columns:1fr 1fr!important}
+.fft-subpanel{background:#0a1428;border:1px solid #1e3257;border-radius:14px;padding:12px;min-width:0}
+.fft-subpanel .panel-title{margin-bottom:8px}
+.fft-subpanel h3{font-size:15px;margin:0}
+.fft-subpanel canvas{background:#07101d}
+.fft-peak-list{display:flex;flex-direction:column;gap:7px;min-height:290px}
+.fft-peak-row{display:grid;grid-template-columns:40px 110px 1fr 90px;gap:8px;align-items:center;padding:8px 9px;background:#08101f;border:1px solid #1c3156;border-radius:9px}
+.fft-peak-rank{color:#6f87ae;font-size:12px}
+.fft-peak-freq{color:#ffd18f;font-weight:700;font-variant-numeric:tabular-nums}
+.fft-peak-bar{height:9px;background:#101a2e;border-radius:999px;overflow:hidden}
+.fft-peak-bar i{display:block;height:100%;background:linear-gradient(90deg,#ffb347,#ffe0a5);border-radius:999px}
+.fft-peak-amp{text-align:right;color:#aebdda;font-size:12px;font-variant-numeric:tabular-nums}
+body[data-mode="one"] .mode-fft,body[data-mode="two"] .mode-fft{display:none!important}
+body[data-mode="fft"] .mode-one,body[data-mode="fft"] .mode-two{display:none!important}
+@media(max-width:1050px){.fft-stats{grid-template-columns:repeat(3,1fr)}.fft-grid{grid-template-columns:1fr!important}}
+@media(max-width:640px){.fft-stats{grid-template-columns:repeat(2,1fr)}.fft-peak-row{grid-template-columns:34px 92px 1fr 72px}.fft-controls input[type=range]{width:110px}}
