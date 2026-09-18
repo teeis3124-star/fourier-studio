@@ -10,9 +10,9 @@
   <main class="app-shell">
     <header class="hero">
       <div>
-        <span class="eyebrow">FOURIER STUDIO · v0.2</span>
+        <span class="eyebrow">FOURIER STUDIO · v0.3</span>
         <h1>把一条曲线拆成一组正弦与余弦</h1>
-        <p>手绘周期函数，实时观察傅里叶级数、单阶谐波、频谱与重建误差。</p>
+        <p>手绘周期函数，实时观察傅里叶级数、旋转相量、单阶谐波、频谱与重建误差。</p>
       </div>
       <div class="hero-badge">512 samples · up to 64 harmonics</div>
     </header>
@@ -64,6 +64,29 @@
           <div><span>当前谐波幅值</span><strong id="ampValue">—</strong></div>
         </div>
       </article>
+    </section>
+
+    <section class="panel epicycle-panel">
+      <div class="panel-title">
+        <h2>旋转相量 / Fourier Epicycles</h2>
+        <span>圆链末端的纵坐标 = 当前 N 阶傅里叶重建值</span>
+      </div>
+      <div class="epicycle-controls">
+        <button id="playBtn">暂停</button>
+        <button id="restartAnimationBtn">从头播放</button>
+        <label>速度
+          <input id="animationSpeed" type="range" min="0.25" max="3" step="0.25" value="1" />
+          <span id="speedValue">1.00×</span>
+        </label>
+        <span class="time-readout">t = <strong id="timeValue">0.00</strong> rad</span>
+      </div>
+      <canvas id="epicycleCanvas" width="1400" height="520"></canvas>
+      <div class="epicycle-explain">
+        <span>半径：Aₙ = √(aₙ²+bₙ²)</span>
+        <span>角速度：nω</span>
+        <span>相位：φₙ = atan2(aₙ,bₙ)</span>
+        <span>橙色：当前选中谐波</span>
+      </div>
     </section>
 
     <section class="grid two">
