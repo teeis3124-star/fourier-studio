@@ -37,3 +37,20 @@
 .contour-hint{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:9px;color:#7188ad;font-size:12px}
 #contourStatus{color:#9fb6da}
 @media(max-width:760px){.contour-import-row>input[type=text]{min-width:100%;width:100%}.contour-hint{display:block}.contour-hint span{display:block;margin-top:4px}}
+
+.mode-switcher{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.mode-btn{background:#0d1730;color:#afc1df;border:1px solid #334a78;border-radius:999px;padding:9px 15px;cursor:pointer}
+.mode-btn.active{background:#1b3158;color:#fff;border-color:#638cd0}
+.mode-help{margin-left:auto;color:#7589aa;font-size:12px}
+body[data-mode="one"] .mode-two{display:none!important}
+body[data-mode="two"] .mode-one{display:none!important}
+.metrics-grid{align-items:stretch}
+.coeff-ranking{display:flex;flex-direction:column;gap:8px;min-height:260px}
+.coeff-row{display:grid;grid-template-columns:56px 1fr 72px;gap:10px;align-items:center}
+.coeff-name{font-variant-numeric:tabular-nums;color:#c7d7f1;font-size:13px}
+.coeff-bar{height:10px;background:#0a1428;border:1px solid #21375d;border-radius:999px;overflow:hidden}
+.coeff-bar>i{display:block;height:100%;background:linear-gradient(90deg,#558fe8,#a9c7ff);border-radius:999px}
+.coeff-value{text-align:right;color:#8fa3c6;font-variant-numeric:tabular-nums;font-size:12px}
+#exportComplexGifBtn.busy{opacity:.65;cursor:progress}
+.export-note{font-size:12px;color:#7488aa}
+@media(max-width:760px){.mode-help{width:100%;margin-left:0}}
