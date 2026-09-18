@@ -149,6 +149,218 @@ function drawSpectrum(ctx, canvas, values, phase = false) {
 }
 
 
+
+function rasterKey(x2, y2) {
+    return y2 * 2048 + x2;
+}
+function contourArea(points) {
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const q = points[(i + 1) % points.length];
+        area += p.x * q.y - q.x * p.y;
+    }
+    return area / 2;
+}
+function extractRasterContours(threshold) {
+    const w = contourRasterCanvas.width;
+    const h = contourRasterCanvas.height;
+    const image = contourRasterCtx.getImageData(0, 0, w, h);
+    const mask = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+        const j = i * 4;
+        const alpha = image.data[j + 3] / 255;
+        const r = image.data[j];
+        const g = image.data[j + 1];
+        const b = image.data[j + 2];
+        const luminance = alpha * (0.2126 * r + 0.7152 * g + 0.0722 * b) + (1 - alpha) * 255;
+        mask[i] = luminance < threshold ? 1 : 0;
+    }
+    const edges = [];
+    const adjacency = new Map();
+    const addSegment = (a, b) => {
+        const index = edges.length;
+        edges.push([a, b]);
+        const aa = adjacency.get(a) || [];
+        aa.push({ to: b, edge: index });
+        adjacency.set(a, aa);
+        const bb = adjacency.get(b) || [];
+        bb.push({ to: a, edge: index });
+        adjacency.set(b, bb);
+    };
+    const addCellSegment = (x, y, e1, e2) => {
+        const pointFor = (edge) => {
+            if (edge === 'T') return rasterKey(2 * x + 1, 2 * y);
+            if (edge === 'R') return rasterKey(2 * x + 2, 2 * y + 1);
+            if (edge === 'B') return rasterKey(2 * x + 1, 2 * y + 2);
+            return rasterKey(2 * x, 2 * y + 1);
+        };
+        addSegment(pointFor(e1), pointFor(e2));
+    };
+    for (let y = 0; y < h - 1; y++) {
+        for (let x = 0; x < w - 1; x++) {
+            const tl = mask[y * w + x] ? 1 : 0;
+            const tr = mask[y * w + x + 1] ? 2 : 0;
+            const br = mask[(y + 1) * w + x + 1] ? 4 : 0;
+            const bl = mask[(y + 1) * w + x] ? 8 : 0;
+            const code = tl | tr | br | bl;
+            switch (code) {
+                case 1: addCellSegment(x, y, 'L', 'T'); break;
+                case 2: addCellSegment(x, y, 'T', 'R'); break;
+                case 3: addCellSegment(x, y, 'L', 'R'); break;
+                case 4: addCellSegment(x, y, 'R', 'B'); break;
+                case 5:
+                    addCellSegment(x, y, 'L', 'T');
+                    addCellSegment(x, y, 'R', 'B');
+                    break;
+                case 6: addCellSegment(x, y, 'T', 'B'); break;
+                case 7: addCellSegment(x, y, 'L', 'B'); break;
+                case 8: addCellSegment(x, y, 'B', 'L'); break;
+                case 9: addCellSegment(x, y, 'T', 'B'); break;
+                case 10:
+                    addCellSegment(x, y, 'T', 'R');
+                    addCellSegment(x, y, 'B', 'L');
+                    break;
+                case 11: addCellSegment(x, y, 'R', 'B'); break;
+                case 12: addCellSegment(x, y, 'L', 'R'); break;
+                case 13: addCellSegment(x, y, 'T', 'R'); break;
+                case 14: addCellSegment(x, y, 'L', 'T'); break;
+            }
+        }
+    }
+    const used = new Uint8Array(edges.length);
+    const contours = [];
+    const xScale = complexDrawCanvas.width / Math.max(1, w - 1);
+    const yScale = complexDrawCanvas.height / Math.max(1, h - 1);
+    for (let startEdge = 0; startEdge < edges.length; startEdge++) {
+        if (used[startEdge]) continue;
+        const start = edges[startEdge][0];
+        let current = start;
+        let edgeIndex = startEdge;
+        const keys = [];
+        let guard = 0;
+        while (guard++ < edges.length + 8) {
+            used[edgeIndex] = 1;
+            keys.push(current);
+            const edge = edges[edgeIndex];
+            const next = edge[0] === current ? edge[1] : edge[0];
+            current = next;
+            if (current === start) break;
+            const options = (adjacency.get(current) || []).filter(item => !used[item.edge]);
+            if (!options.length) break;
+            edgeIndex = options[0].edge;
+        }
+        if (keys.length < 10 || current !== start) continue;
+        const points = keys.map(key => {
+            const x2 = key % 2048;
+            const y2 = Math.floor(key / 2048);
+            return {
+                x: (x2 / 2) * xScale,
+                y: (y2 / 2) * yScale,
+            };
+        });
+        if (Math.abs(contourArea(points)) < 18) continue;
+        const step = Math.max(1, Math.ceil(points.length / 320));
+        contours.push(points.filter((_, i) => i % step === 0));
+    }
+    return contours;
+}
+function stitchContours(contours) {
+    if (!contours.length) return [];
+    const remaining = contours
+        .filter(c => c.length >= 4)
+        .sort((a, b) => {
+            const ax = Math.min(...a.map(p => p.x));
+            const bx = Math.min(...b.map(p => p.x));
+            return ax - bx;
+        });
+    if (!remaining.length) return [];
+    const first = remaining.shift();
+    const result = [...first, first[0]];
+    while (remaining.length) {
+        const end = result[result.length - 1];
+        let bestContour = 0;
+        let bestPoint = 0;
+        let bestDistance = Infinity;
+        for (let ci = 0; ci < remaining.length; ci++) {
+            const contour = remaining[ci];
+            for (let pi = 0; pi < contour.length; pi++) {
+                const d = Math.hypot(contour[pi].x - end.x, contour[pi].y - end.y);
+                if (d < bestDistance) {
+                    bestDistance = d;
+                    bestContour = ci;
+                    bestPoint = pi;
+                }
+            }
+        }
+        const contour = remaining.splice(bestContour, 1)[0];
+        const rotated = [...contour.slice(bestPoint), ...contour.slice(0, bestPoint)];
+        result.push(...rotated, rotated[0]);
+    }
+    return result;
+}
+function applyRasterContour(source) {
+    const threshold = Number(contourThresholdInput.value);
+    const contours = extractRasterContours(threshold);
+    const path = stitchContours(contours);
+    if (path.length < 6) {
+        $('contourStatus').textContent = '没有检测到足够清晰的深色轮廓，请调整阈值或换一张图。';
+        return;
+    }
+    complexRawPath = path;
+    complexDrawing = false;
+    complexPlaying = true;
+    $('complexPlayBtn').textContent = '暂停';
+    rebuildComplexModel();
+    $('contourStatus').textContent =
+        source + '：提取 ' + contours.length + ' 个闭合轮廓，拼接为 ' + path.length + ' 个路径点';
+}
+function renderTextContour() {
+    const text = contourTextInput.value.trim() || 'FOURIER';
+    const ctx = contourRasterCtx;
+    const w = contourRasterCanvas.width;
+    const h = contourRasterCanvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    let size = 118;
+    do {
+        ctx.font = '800 ' + size + 'px Arial, "Microsoft YaHei", "PingFang SC", sans-serif';
+        if (ctx.measureText(text).width <= w - 24) break;
+        size -= 4;
+    } while (size > 22);
+    ctx.fillText(text, w / 2, h / 2);
+    contourRasterReady = true;
+    applyRasterContour('文字“' + text + '”');
+}
+function importContourImage(file) {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+        const ctx = contourRasterCtx;
+        const w = contourRasterCanvas.width;
+        const h = contourRasterCanvas.height;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        const margin = 10;
+        const scale = Math.min((w - margin * 2) / image.width, (h - margin * 2) / image.height);
+        const dw = image.width * scale;
+        const dh = image.height * scale;
+        ctx.drawImage(image, (w - dw) / 2, (h - dh) / 2, dw, dh);
+        URL.revokeObjectURL(url);
+        contourRasterReady = true;
+        applyRasterContour('图片“' + file.name + '”');
+    };
+    image.onerror = () => {
+        URL.revokeObjectURL(url);
+        $('contourStatus').textContent = '图片读取失败，请换一个 PNG / JPG / WebP 文件。';
+    };
+    image.src = url;
+}
 function drawComplexGrid(ctx, canvas) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = '#162744';
