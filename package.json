@@ -1,8 +1,8 @@
 {
   "name": "fourier-studio",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
-  "description": "Interactive 1D and 2D Fourier studio with drawing, complex epicycles, spectra and live reconstruction.",
+  "description": "Interactive Fourier studio with 1D/2D drawing, contour extraction, complex epicycles, spectra and live reconstruction.",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc && node scripts/build.mjs",
