@@ -6,10 +6,14 @@ const mainCanvas = $('mainCanvas');
 const ampCanvas = $('ampCanvas');
 const phaseCanvas = $('phaseCanvas');
 const epicycleCanvas = $('epicycleCanvas');
+const complexDrawCanvas = $('complexDrawCanvas');
+const complexFourierCanvas = $('complexFourierCanvas');
 const mainCtx = mainCanvas.getContext('2d');
 const ampCtx = ampCanvas.getContext('2d');
 const phaseCtx = phaseCanvas.getContext('2d');
 const epicycleCtx = epicycleCanvas.getContext('2d');
+const complexDrawCtx = complexDrawCanvas.getContext('2d');
+const complexFourierCtx = complexFourierCanvas.getContext('2d');
 const orderInput = $('order');
 const harmonicInput = $('harmonic');
 const presetSelect = $('preset');
@@ -17,6 +21,8 @@ const formulaEl = $('formula');
 const latexEl = $('latex');
 const compactFormula = $('compactFormula');
 const animationSpeedInput = $('animationSpeed');
+const complexOrderInput = $('complexOrder');
+const complexSpeedInput = $('complexSpeed');
 let samples = new Float64Array(SAMPLE_COUNT);
 let drawing = false;
 let lastDrawIndex = null;
@@ -26,6 +32,14 @@ let animationPlaying = true;
 let lastFrameTime = 0;
 const waveTrace = [];
 const MAX_TRACE_POINTS = 440;
+const COMPLEX_SAMPLE_COUNT = 256;
+let complexRawPath = [];
+let complexSamples = [];
+let complexCoeffs = [];
+let complexTrace = [];
+let complexDrawing = false;
+let complexTime = 0;
+let complexPlaying = true;
 function presetValue(kind, x) {
     const s = Math.sin(x);
     if (kind === 'sine') return Math.sin(x) + 0.35 * Math.sin(3 * x);
@@ -126,6 +140,247 @@ function drawSpectrum(ctx, canvas, values, phase = false) {
     });
 }
 
+
+function drawComplexGrid(ctx, canvas) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#162744';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 8; i++) {
+        const x = i * canvas.width / 8;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+    for (let i = 1; i < 6; i++) {
+        const y = i * canvas.height / 6;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+    ctx.strokeStyle = '#324c78';
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.moveTo(0, canvas.height / 2);
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.stroke();
+}
+function resampleClosedPath(points, count) {
+    if (points.length < 2) return [];
+    const closed = [...points, points[0]];
+    const lengths = [0];
+    let total = 0;
+    for (let i = 1; i < closed.length; i++) {
+        total += Math.hypot(closed[i].x - closed[i - 1].x, closed[i].y - closed[i - 1].y);
+        lengths.push(total);
+    }
+    if (total < 1) return [];
+    const result = [];
+    let seg = 1;
+    for (let j = 0; j < count; j++) {
+        const target = total * j / count;
+        while (seg < lengths.length - 1 && lengths[seg] < target) seg++;
+        const l0 = lengths[seg - 1];
+        const l1 = lengths[seg];
+        const t = l1 === l0 ? 0 : (target - l0) / (l1 - l0);
+        const p0 = closed[seg - 1];
+        const p1 = closed[seg];
+        result.push({
+            x: p0.x + (p1.x - p0.x) * t,
+            y: p0.y + (p1.y - p0.y) * t,
+        });
+    }
+    return result;
+}
+function normalizeComplexSamples(points) {
+    if (!points.length) return [];
+    const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+    const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+    let maxRadius = 1;
+    for (const p of points) maxRadius = Math.max(maxRadius, Math.hypot(p.x - cx, p.y - cy));
+    const targetRadius = Math.min(complexFourierCanvas.width, complexFourierCanvas.height) * 0.34;
+    const scale = targetRadius / maxRadius;
+    return points.map(p => ({
+        x: (p.x - cx) * scale,
+        y: -(p.y - cy) * scale,
+    }));
+}
+function calculateComplexCoefficients(points, order) {
+    if (!points.length) return [];
+    const result = [];
+    const m = points.length;
+    for (let k = -order; k <= order; k++) {
+        let re = 0;
+        let im = 0;
+        for (let j = 0; j < m; j++) {
+            const theta = TWO_PI * k * j / m;
+            const cos = Math.cos(theta);
+            const sin = Math.sin(theta);
+            re += points[j].x * cos + points[j].y * sin;
+            im += points[j].y * cos - points[j].x * sin;
+        }
+        re /= m;
+        im /= m;
+        result.push({ k, re, im, amp: Math.hypot(re, im) });
+    }
+    return result.sort((a, b) => {
+        const aa = Math.abs(a.k);
+        const bb = Math.abs(b.k);
+        if (aa !== bb) return aa - bb;
+        return b.k - a.k;
+    });
+}
+function rebuildComplexModel() {
+    const resampled = resampleClosedPath(complexRawPath, COMPLEX_SAMPLE_COUNT);
+    complexSamples = normalizeComplexSamples(resampled);
+    complexCoeffs = calculateComplexCoefficients(complexSamples, +complexOrderInput.value);
+    complexTrace = [];
+    complexTime = 0;
+    $('complexOrderValue').textContent = complexOrderInput.value;
+    $('complexSampleValue').textContent = complexSamples.length ? String(complexSamples.length) : '0';
+    $('complexCoeffValue').textContent = String(complexCoeffs.length);
+    drawComplexInput();
+    drawComplexFourier();
+}
+function drawComplexInput() {
+    drawComplexGrid(complexDrawCtx, complexDrawCanvas);
+    if (!complexRawPath.length) {
+        complexDrawCtx.fillStyle = '#7188ad';
+        complexDrawCtx.font = '16px system-ui, sans-serif';
+        complexDrawCtx.textAlign = 'center';
+        complexDrawCtx.fillText('按住鼠标，在这里画任意闭合轮廓', complexDrawCanvas.width / 2, complexDrawCanvas.height / 2);
+        complexDrawCtx.textAlign = 'start';
+        return;
+    }
+    complexDrawCtx.strokeStyle = '#63a7ff';
+    complexDrawCtx.lineWidth = 3;
+    complexDrawCtx.lineJoin = 'round';
+    complexDrawCtx.lineCap = 'round';
+    complexDrawCtx.beginPath();
+    complexRawPath.forEach((p, i) => i === 0 ? complexDrawCtx.moveTo(p.x, p.y) : complexDrawCtx.lineTo(p.x, p.y));
+    complexDrawCtx.stroke();
+    if (!complexDrawing && complexRawPath.length > 2) {
+        const first = complexRawPath[0];
+        const last = complexRawPath[complexRawPath.length - 1];
+        complexDrawCtx.setLineDash([7, 7]);
+        complexDrawCtx.strokeStyle = '#3d679e';
+        complexDrawCtx.lineWidth = 1.2;
+        complexDrawCtx.beginPath();
+        complexDrawCtx.moveTo(last.x, last.y);
+        complexDrawCtx.lineTo(first.x, first.y);
+        complexDrawCtx.stroke();
+        complexDrawCtx.setLineDash([]);
+    }
+}
+function complexPointAtTime(t) {
+    let x = 0;
+    let y = 0;
+    for (const c of complexCoeffs) {
+        const angle = c.k * t;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        x += c.re * cos - c.im * sin;
+        y += c.re * sin + c.im * cos;
+    }
+    return { x, y };
+}
+function drawComplexFourier() {
+    const ctx = complexFourierCtx;
+    const canvas = complexFourierCanvas;
+    drawComplexGrid(ctx, canvas);
+    if (!complexCoeffs.length) {
+        ctx.fillStyle = '#7188ad';
+        ctx.font = '16px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('左侧完成手绘后，这里会自动进行复傅里叶重建', canvas.width / 2, canvas.height / 2);
+        ctx.textAlign = 'start';
+        return;
+    }
+    let x = canvas.width / 2;
+    let y = canvas.height / 2;
+    for (const c of complexCoeffs) {
+        const angle = c.k * complexTime;
+        const vx = c.re * Math.cos(angle) - c.im * Math.sin(angle);
+        const vy = c.re * Math.sin(angle) + c.im * Math.cos(angle);
+        const radius = c.amp;
+        const emphasized = Math.abs(c.k) <= 2;
+        if (radius > 0.7) {
+            ctx.save();
+            ctx.globalAlpha = c.k === 0 ? 0.18 : emphasized ? 0.35 : 0.18;
+            ctx.strokeStyle = c.k === 0 ? '#86b5ff' : '#78a8ff';
+            ctx.lineWidth = emphasized ? 1.5 : 1;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, TWO_PI);
+            ctx.stroke();
+            ctx.restore();
+        }
+        const nextX = x + vx;
+        const nextY = y - vy;
+        ctx.strokeStyle = c.k === 0 ? '#86b5ff' : '#91a9ce';
+        ctx.lineWidth = Math.abs(c.k) <= 2 ? 1.8 : 1.1;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(nextX, nextY);
+        ctx.stroke();
+        x = nextX;
+        y = nextY;
+    }
+    if (complexTrace.length > 1) {
+        ctx.strokeStyle = '#ffb347';
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        complexTrace.forEach((p, i) => {
+            const px = canvas.width / 2 + p.x;
+            const py = canvas.height / 2 - p.y;
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x, y, 4.5, 0, TWO_PI);
+    ctx.fill();
+    ctx.fillStyle = '#8399bd';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('Σ cₖ eⁱᵏᵗ', 14, 22);
+    $('complexTimeValue').textContent = complexTime.toFixed(2);
+}
+function complexCanvasPoint(e) {
+    const rect = complexDrawCanvas.getBoundingClientRect();
+    return {
+        x: (e.clientX - rect.left) / rect.width * complexDrawCanvas.width,
+        y: (e.clientY - rect.top) / rect.height * complexDrawCanvas.height,
+    };
+}
+function loadComplexStarDemo() {
+    complexRawPath = [];
+    const cx = complexDrawCanvas.width / 2;
+    const cy = complexDrawCanvas.height / 2;
+    const outer = 185;
+    const inner = 78;
+    const vertices = [];
+    for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? outer : inner;
+        const a = -Math.PI / 2 + i * Math.PI / 5;
+        vertices.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    }
+    for (let i = 0; i < vertices.length; i++) {
+        const p0 = vertices[i];
+        const p1 = vertices[(i + 1) % vertices.length];
+        for (let j = 0; j < 28; j++) {
+            const t = j / 28;
+            complexRawPath.push({
+                x: p0.x + (p1.x - p0.x) * t,
+                y: p0.y + (p1.y - p0.y) * t,
+            });
+        }
+    }
+    rebuildComplexModel();
+}
 function drawEpicycle() {
     const ctx = epicycleCtx;
     const canvas = epicycleCanvas;
@@ -243,6 +498,15 @@ function animate(now) {
             waveTrace.pop();
         drawEpicycle();
     }
+    if (complexPlaying && complexCoeffs.length) {
+        const complexSpeed = +complexSpeedInput.value;
+        const previous = complexTime;
+        complexTime = (complexTime + dt * 1.05 * complexSpeed) % TWO_PI;
+        if (complexTime < previous) complexTrace = [];
+        complexTrace.push(complexPointAtTime(complexTime));
+        if (complexTrace.length > COMPLEX_SAMPLE_COUNT * 2) complexTrace.shift();
+        drawComplexFourier();
+    }
     requestAnimationFrame(animate);
 }
 function fmt(value) {
@@ -356,6 +620,60 @@ $('restartAnimationBtn').onclick = () => {
     lastFrameTime = performance.now();
     drawEpicycle();
 };
+
+complexDrawCanvas.addEventListener('pointerdown', e => {
+    complexDrawing = true;
+    complexRawPath = [];
+    complexTrace = [];
+    complexDrawCanvas.setPointerCapture(e.pointerId);
+    complexRawPath.push(complexCanvasPoint(e));
+    drawComplexInput();
+});
+complexDrawCanvas.addEventListener('pointermove', e => {
+    if (!complexDrawing) return;
+    const p = complexCanvasPoint(e);
+    const last = complexRawPath[complexRawPath.length - 1];
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) >= 2.5) {
+        complexRawPath.push(p);
+        drawComplexInput();
+    }
+});
+const finishComplexDraw = () => {
+    if (!complexDrawing) return;
+    complexDrawing = false;
+    if (complexRawPath.length >= 6) rebuildComplexModel();
+    else drawComplexInput();
+};
+complexDrawCanvas.addEventListener('pointerup', finishComplexDraw);
+complexDrawCanvas.addEventListener('pointercancel', finishComplexDraw);
+complexOrderInput.oninput = () => rebuildComplexModel();
+complexSpeedInput.oninput = () => {
+    $('complexSpeedValue').textContent = `${Number(complexSpeedInput.value).toFixed(2)}×`;
+};
+$('complexPlayBtn').onclick = () => {
+    complexPlaying = !complexPlaying;
+    $('complexPlayBtn').textContent = complexPlaying ? '暂停' : '继续';
+    drawComplexFourier();
+};
+$('complexRestartBtn').onclick = () => {
+    complexTime = 0;
+    complexTrace = [];
+    complexPlaying = true;
+    $('complexPlayBtn').textContent = '暂停';
+    drawComplexFourier();
+};
+$('complexClearBtn').onclick = () => {
+    complexRawPath = [];
+    complexSamples = [];
+    complexCoeffs = [];
+    complexTrace = [];
+    complexTime = 0;
+    drawComplexInput();
+    drawComplexFourier();
+    $('complexSampleValue').textContent = '0';
+    $('complexCoeffValue').textContent = '0';
+};
+$('complexDemoBtn').onclick = () => loadComplexStarDemo();
 $('resetBtn').onclick = () => loadPreset();
 $('clearBtn').onclick = () => { samples.fill(0); updateAll(); };
 $('copyLatexBtn').onclick = async () => {
@@ -365,5 +683,6 @@ $('copyLatexBtn').onclick = async () => {
     setTimeout(() => b.textContent = old, 900);
 };
 loadPreset('sine');
+loadComplexStarDemo();
 lastFrameTime = performance.now();
 requestAnimationFrame(animate);
