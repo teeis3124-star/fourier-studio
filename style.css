@@ -24,3 +24,16 @@
 .complex-status{display:flex;gap:22px;flex-wrap:wrap;margin-top:11px;color:#8399bd;font-size:12px}
 .complex-status strong{color:#c9d8f2;font-variant-numeric:tabular-nums}
 @media(max-width:900px){.complex-grid{grid-template-columns:1fr}.complex-controls input[type=range]{width:130px}}
+
+.contour-import{margin:-2px 0 15px;padding:13px;border:1px solid #263a62;border-radius:14px;background:#0a1428}
+.contour-import-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.contour-import-row>input[type=text]{min-width:220px;flex:1;background:#07101d;color:#edf3ff;border:1px solid #334a78;border-radius:10px;padding:10px 12px;outline:none}
+.contour-import-row>input[type=text]:focus{border-color:#6f9fe8}
+.contour-import-row button,.file-button{background:#0d1730;color:#eaf1ff;border:1px solid #334a78;border-radius:10px;padding:9px 13px;cursor:pointer}
+.file-button{display:inline-flex;align-items:center}
+.file-button input{display:none}
+.contour-import-row label:not(.file-button){display:flex;align-items:center;gap:8px;color:#b9c8e4;font-size:13px}
+.contour-import-row input[type=range]{width:130px}
+.contour-hint{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:9px;color:#7188ad;font-size:12px}
+#contourStatus{color:#9fb6da}
+@media(max-width:760px){.contour-import-row>input[type=text]{min-width:100%;width:100%}.contour-hint{display:block}.contour-hint span{display:block;margin-top:4px}}
