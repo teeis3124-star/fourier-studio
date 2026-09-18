@@ -138,6 +138,10 @@ time, amplitude
           </select>
         </label>
         <label class="check-label"><input id="fftRemoveDc" type="checkbox" checked /> 去除直流分量</label>
+        <label>显示频率上限
+          <input id="fftMaxFreq" type="number" min="0" step="any" placeholder="自动" />
+          <span>Hz</span>
+        </label>
         <label>重建主频数
           <input id="fftReconCount" type="range" min="1" max="20" value="5" />
           <span id="fftReconCountValue">5</span>
