@@ -46,7 +46,7 @@ body[data-mode="one"] .mode-two{display:none!important}
 body[data-mode="two"] .mode-one{display:none!important}
 .metrics-grid{align-items:stretch}
 .coeff-ranking{display:flex;flex-direction:column;gap:8px;min-height:260px}
-.coeff-row{display:grid;grid-template-columns:56px 1fr 72px;gap:10px;align-items:center}
+.coeff-row{display:grid;grid-template-columns:56px 1fr 72px;gap:10px;align-items:center;width:100%;padding:7px 8px;background:#091326;border:1px solid transparent;border-radius:9px;color:inherit;cursor:pointer;text-align:left}.coeff-row:hover{border-color:#2d4774;background:#0c1930}
 .coeff-name{font-variant-numeric:tabular-nums;color:#c7d7f1;font-size:13px}
 .coeff-bar{height:10px;background:#0a1428;border:1px solid #21375d;border-radius:999px;overflow:hidden}
 .coeff-bar>i{display:block;height:100%;background:linear-gradient(90deg,#558fe8,#a9c7ff);border-radius:999px}
