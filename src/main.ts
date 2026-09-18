@@ -28,6 +28,13 @@ const compactFormula = $<HTMLInputElement>('compactFormula');
 const animationSpeedInput = $<HTMLInputElement>('animationSpeed');
 const complexOrderInput = $<HTMLInputElement>('complexOrder');
 const complexSpeedInput = $<HTMLInputElement>('complexSpeed');
+const contourTextInput = $<HTMLInputElement>('contourText');
+const contourImageInput = $<HTMLInputElement>('contourImageInput');
+const contourThresholdInput = $<HTMLInputElement>('contourThreshold');
+const contourRasterCanvas = document.createElement('canvas');
+contourRasterCanvas.width = 340;
+contourRasterCanvas.height = 260;
+const contourRasterCtx = contourRasterCanvas.getContext('2d')!;
 
 let samples = new Float64Array(SAMPLE_COUNT);
 let drawing = false;
@@ -46,6 +53,7 @@ let complexTrace: Point2[] = [];
 let complexDrawing = false;
 let complexTime = 0;
 let complexPlaying = true;
+let contourRasterReady = false;
 
 function presetValue(kind: Preset, x: number): number {
   const s = Math.sin(x);
