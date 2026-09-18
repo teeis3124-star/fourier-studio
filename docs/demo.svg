@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="480" viewBox="0 0 960 480">
+  <rect width="960" height="480" rx="24" fill="#08101f"/>
+  <g stroke="#172846" stroke-width="1">
+    <path d="M0 80H960M0 160H960M0 240H960M0 320H960M0 400H960"/>
+    <path d="M120 0V480M240 0V480M360 0V480M480 0V480M600 0V480M720 0V480M840 0V480"/>
+  </g>
+  <text x="42" y="54" fill="#edf3ff" font-family="system-ui,sans-serif" font-size="28" font-weight="700">Fourier Studio v0.6</text>
+  <text x="42" y="84" fill="#8fa3c6" font-family="system-ui,sans-serif" font-size="15">Interactive 1D Fourier analysis + 2D complex epicycles</text>
+  <g transform="translate(310 270)">
+    <circle r="118" fill="none" stroke="#4d78b9" stroke-width="2" opacity=".45"/>
+    <line x1="0" y1="0" x2="92" y2="-74" stroke="#91a9ce" stroke-width="3"/>
+    <g transform="translate(92 -74)">
+      <circle r="62" fill="none" stroke="#5f8ed6" stroke-width="2" opacity=".55"/>
+      <line x1="0" y1="0" x2="-38" y2="-49" stroke="#91a9ce" stroke-width="3"/>
+      <g transform="translate(-38 -49)">
+        <circle r="31" fill="none" stroke="#5f8ed6" stroke-width="2" opacity=".55"/>
+        <line x1="0" y1="0" x2="26" y2="17" stroke="#91a9ce" stroke-width="3"/>
+        <circle cx="26" cy="17" r="6" fill="#f3f6ff"/>
+      </g>
+    </g>
+  </g>
+  <path d="M650 115 L688 208 L790 215 L712 279 L737 378 L650 324 L563 378 L588 279 L510 215 L612 208 Z"
+        fill="none" stroke="#ffb347" stroke-width="5" stroke-linejoin="round"/>
+  <text x="548" y="430" fill="#8fa3c6" font-family="system-ui,sans-serif" font-size="14">epicycles → Fourier reconstruction</text>
+</svg>
