@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fourier Studio</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div>
+        <span class="eyebrow">FOURIER STUDIO · v0.2</span>
+        <h1>把一条曲线拆成一组正弦与余弦</h1>
+        <p>手绘周期函数，实时观察傅里叶级数、单阶谐波、频谱与重建误差。</p>
+      </div>
+      <div class="hero-badge">512 samples · up to 64 harmonics</div>
+    </header>
+
+    <section class="toolbar panel">
+      <label>预设
+        <select id="preset">
+          <option value="sine">正弦波</option>
+          <option value="square">方波</option>
+          <option value="saw">锯齿波</option>
+          <option value="triangle">三角波</option>
+          <option value="pulse">脉冲</option>
+        </select>
+      </label>
+      <label>阶数 N
+        <input id="order" type="range" min="1" max="64" value="8" />
+        <span id="orderValue">8</span>
+      </label>
+      <label>高亮谐波
+        <input id="harmonic" type="range" min="1" max="8" value="1" />
+        <span id="harmonicValue">1</span>
+      </label>
+      <button id="clearBtn">清空手绘</button>
+      <button id="resetBtn">恢复预设</button>
+    </section>
+
+    <section class="grid two">
+      <article class="panel">
+        <div class="panel-title"><h2>时域 / 重建</h2><span>拖动鼠标或触控笔直接修改蓝色目标曲线</span></div>
+        <canvas id="mainCanvas" width="1100" height="440"></canvas>
+        <div class="legend">
+          <span><i class="dot target"></i>目标函数</span>
+          <span><i class="dot recon"></i>N 阶重建</span>
+          <span><i class="dot harmonic"></i>当前单阶谐波</span>
+        </div>
+      </article>
+
+      <article class="panel formula-panel">
+        <div class="panel-title"><h2>傅里叶级数</h2><span>点击公式中的某一项，可高亮对应谐波</span></div>
+        <div class="formula-actions">
+          <label><input id="compactFormula" type="checkbox" checked /> 精简零项</label>
+          <button id="copyLatexBtn">复制 LaTeX</button>
+        </div>
+        <div id="formula" class="formula"></div>
+        <pre id="latex" class="latex"></pre>
+        <div class="stats">
+          <div><span>RMS 误差</span><strong id="rmsValue">—</strong></div>
+          <div><span>a₀ / 2</span><strong id="a0Value">—</strong></div>
+          <div><span>当前谐波幅值</span><strong id="ampValue">—</strong></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article class="panel">
+        <div class="panel-title"><h2>幅度谱</h2><span>√(aₙ²+bₙ²)</span></div>
+        <canvas id="ampCanvas" width="1100" height="320"></canvas>
+      </article>
+      <article class="panel">
+        <div class="panel-title"><h2>相位谱</h2><span>atan2(-bₙ, aₙ)</span></div>
+        <canvas id="phaseCanvas" width="1100" height="320"></canvas>
+      </article>
+    </section>
+
+    <footer>Fourier Studio · browser-only · no external runtime dependency</footer>
+  </main>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
