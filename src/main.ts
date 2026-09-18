@@ -783,7 +783,7 @@ complexDrawCanvas.addEventListener('pointercancel', finishComplexDraw);
 
 complexOrderInput.oninput = () => rebuildComplexModel();
 complexSpeedInput.oninput = () => {
-  $('complexSpeedValue').textContent = \`\${Number(complexSpeedInput.value).toFixed(2)}×\`;
+  $('complexSpeedValue').textContent = `${Number(complexSpeedInput.value).toFixed(2)}×`;
 };
 $('complexPlayBtn').onclick = () => {
   complexPlaying = !complexPlaying;
