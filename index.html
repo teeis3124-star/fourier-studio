@@ -10,7 +10,7 @@
   <main class="app-shell">
     <header class="hero">
       <div>
-        <span class="eyebrow">FOURIER STUDIO · v0.4</span>
+        <span class="eyebrow">FOURIER STUDIO · v0.5</span>
         <h1>把一条曲线拆成一组正弦与余弦</h1>
         <p>从一维傅里叶级数到二维复傅里叶绘图：手绘、分解、旋转相量与动态重建。</p>
       </div>
@@ -93,6 +93,23 @@
       <div class="panel-title">
         <h2>二维复傅里叶绘图 / Complex Fourier Drawing</h2>
         <span>把路径写成 z(t)=x(t)+iy(t)，再由复指数旋转向量重建</span>
+      </div>
+      <div class="contour-import">
+        <div class="contour-import-row">
+          <input id="contourText" type="text" value="FOURIER" maxlength="24" aria-label="轮廓文字" />
+          <button id="contourTextBtn">文字 → 傅里叶轮廓</button>
+          <label class="file-button">上传黑白轮廓图
+            <input id="contourImageInput" type="file" accept="image/*" />
+          </label>
+          <label>灰度阈值
+            <input id="contourThreshold" type="range" min="20" max="235" value="160" />
+            <span id="contourThresholdValue">160</span>
+          </label>
+        </div>
+        <div class="contour-hint">
+          <span id="contourStatus">可输入文字，或上传深色图形 / 浅色背景的图片</span>
+          <span>所有轮廓提取均在本地浏览器完成</span>
+        </div>
       </div>
       <div class="complex-controls">
         <button id="complexPlayBtn">暂停</button>
