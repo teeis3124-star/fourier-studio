@@ -1,6 +1,6 @@
 {
   "name": "fourier-studio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Interactive Fourier series studio for drawing, reconstruction, spectra and formula inspection.",
   "scripts": {
