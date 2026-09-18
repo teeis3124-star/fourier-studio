@@ -206,6 +206,359 @@ function drawSpectrum(
 
 
 
+
+function calculateErrorCurve(maxOrder = 64): number[] {
+  const full = calculateCoefficients(maxOrder);
+  const recon = new Float64Array(SAMPLE_COUNT);
+  recon.fill(full.a0 / 2);
+  const errors: number[] = [];
+
+  for (let n = 1; n <= maxOrder; n++) {
+    let sum = 0;
+    for (let i = 0; i < SAMPLE_COUNT; i++) {
+      const x = -Math.PI + TWO_PI * i / SAMPLE_COUNT;
+      recon[i] += full.a[n] * Math.cos(n * x) + full.b[n] * Math.sin(n * x);
+      const e = samples[i] - recon[i];
+      sum += e * e;
+    }
+    errors.push(Math.sqrt(sum / SAMPLE_COUNT));
+  }
+
+  return errors;
+}
+
+function drawErrorCurve(errors: number[]) {
+  const ctx = errorCtx;
+  const canvas = errorCanvas;
+  const padLeft = 54;
+  const padRight = 22;
+  const padTop = 20;
+  const padBottom = 38;
+  const w = canvas.width - padLeft - padRight;
+  const h = canvas.height - padTop - padBottom;
+  const maxErr = Math.max(0.001, ...errors);
+  const currentN = +orderInput.value;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#172846';
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i <= 4; i++) {
+    const y = padTop + i * h / 4;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, y);
+    ctx.lineTo(padLeft + w, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#38527f';
+  ctx.beginPath();
+  ctx.moveTo(padLeft, padTop);
+  ctx.lineTo(padLeft, padTop + h);
+  ctx.lineTo(padLeft + w, padTop + h);
+  ctx.stroke();
+
+  ctx.fillStyle = '#8399bd';
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.fillText(maxErr.toFixed(3), 7, padTop + 4);
+  ctx.fillText('0', 28, padTop + h + 4);
+
+  [1, 16, 32, 48, 64].forEach(n => {
+    const x = padLeft + (n - 1) / 63 * w;
+    ctx.fillText(String(n), x - 7, canvas.height - 12);
+  });
+
+  ctx.strokeStyle = '#78a8ff';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  errors.forEach((err, i) => {
+    const x = padLeft + i / Math.max(1, errors.length - 1) * w;
+    const y = padTop + h - err / maxErr * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  const activeIndex = Math.max(0, Math.min(errors.length - 1, currentN - 1));
+  const ax = padLeft + activeIndex / Math.max(1, errors.length - 1) * w;
+  const ay = padTop + h - errors[activeIndex] / maxErr * h;
+  ctx.fillStyle = '#ffb347';
+  ctx.beginPath();
+  ctx.arc(ax, ay, 5, 0, TWO_PI);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffd18f';
+  ctx.fillText('N=' + currentN + ' · ' + errors[activeIndex].toFixed(4), Math.min(ax + 9, canvas.width - 130), Math.max(16, ay - 8));
+}
+
+function updateCoeffRanking() {
+  const nMax = +orderInput.value;
+  const rows = Array.from({ length: nMax }, (_, i) => {
+    const n = i + 1;
+    return {
+      n,
+      amp: Math.hypot(coeff.a[n] || 0, coeff.b[n] || 0),
+    };
+  }).sort((a, b) => b.amp - a.amp).slice(0, 8);
+
+  const maxAmp = Math.max(0.001, ...rows.map(r => r.amp));
+  const target = $('coeffRanking');
+
+  if (!rows.length) {
+    target.innerHTML = '<div class="export-note">当前没有可显示的谐波分量。</div>';
+    return;
+  }
+
+  target.innerHTML = rows.map(row => {
+    const pct = Math.max(1, row.amp / maxAmp * 100);
+    return '<button class="coeff-row" data-n="' + row.n + '">' +
+      '<span class="coeff-name">n=' + row.n + '</span>' +
+      '<span class="coeff-bar"><i style="width:' + pct.toFixed(1) + '%"></i></span>' +
+      '<span class="coeff-value">' + row.amp.toFixed(4) + '</span>' +
+      '</button>';
+  }).join('');
+
+  target.querySelectorAll<HTMLButtonElement>('[data-n]').forEach(button => {
+    button.onclick = () => {
+      const n = Number(button.dataset.n);
+      harmonicInput.value = String(n);
+      updateAll(false);
+    };
+  });
+}
+
+function updateAnalytics() {
+  drawErrorCurve(calculateErrorCurve(64));
+  updateCoeffRanking();
+}
+
+function setDisplayMode(mode: 'all' | 'one' | 'two') {
+  document.body.dataset.mode = mode;
+  document.querySelectorAll<HTMLButtonElement>('.mode-btn').forEach(button => {
+    button.classList.toggle('active', button.dataset.mode === mode);
+  });
+  try {
+    localStorage.setItem('fourier-studio-mode', mode);
+  } catch {
+    // Ignore private browsing/storage restrictions.
+  }
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportCanvasPng(canvas: HTMLCanvasElement, filename: string) {
+  canvas.toBlob(blob => {
+    if (blob) downloadBlob(blob, filename);
+  }, 'image/png');
+}
+
+function writeAscii(out: number[], text: string) {
+  for (let i = 0; i < text.length; i++) out.push(text.charCodeAt(i) & 0xff);
+}
+
+function writeU16(out: number[], value: number) {
+  out.push(value & 0xff, (value >> 8) & 0xff);
+}
+
+function make332Palette(): number[] {
+  const palette: number[] = [];
+  for (let i = 0; i < 256; i++) {
+    const r = Math.round(((i >> 5) & 7) * 255 / 7);
+    const g = Math.round(((i >> 2) & 7) * 255 / 7);
+    const b = Math.round((i & 3) * 255 / 3);
+    palette.push(r, g, b);
+  }
+  return palette;
+}
+
+function rgbaTo332(data: ImageData): Uint8Array {
+  const result = new Uint8Array(data.width * data.height);
+  for (let i = 0; i < result.length; i++) {
+    const j = i * 4;
+    const r = data.data[j];
+    const g = data.data[j + 1];
+    const b = data.data[j + 2];
+    result[i] = ((r >> 5) << 5) | ((g >> 5) << 2) | (b >> 6);
+  }
+  return result;
+}
+
+function gifLzwEncode(indices: Uint8Array, minCodeSize = 8): Uint8Array {
+  const clearCode = 1 << minCodeSize;
+  const endCode = clearCode + 1;
+  let nextCode = endCode + 1;
+  let codeSize = minCodeSize + 1;
+  let dictionary = new Map<number, number>();
+  const bytes: number[] = [];
+  let bitBuffer = 0;
+  let bitCount = 0;
+
+  const emit = (code: number) => {
+    bitBuffer |= code << bitCount;
+    bitCount += codeSize;
+    while (bitCount >= 8) {
+      bytes.push(bitBuffer & 0xff);
+      bitBuffer >>>= 8;
+      bitCount -= 8;
+    }
+  };
+
+  const reset = () => {
+    dictionary = new Map<number, number>();
+    nextCode = endCode + 1;
+    codeSize = minCodeSize + 1;
+  };
+
+  emit(clearCode);
+
+  if (!indices.length) {
+    emit(endCode);
+    if (bitCount > 0) bytes.push(bitBuffer & 0xff);
+    return new Uint8Array(bytes);
+  }
+
+  let prefix = indices[0];
+
+  for (let i = 1; i < indices.length; i++) {
+    const value = indices[i];
+    const key = (prefix << 8) | value;
+    const existing = dictionary.get(key);
+
+    if (existing !== undefined) {
+      prefix = existing;
+      continue;
+    }
+
+    emit(prefix);
+
+    if (nextCode < 4096) {
+      dictionary.set(key, nextCode++);
+      if (nextCode === (1 << codeSize) && codeSize < 12) codeSize++;
+    } else {
+      emit(clearCode);
+      reset();
+    }
+
+    prefix = value;
+  }
+
+  emit(prefix);
+  emit(endCode);
+  if (bitCount > 0) bytes.push(bitBuffer & 0xff);
+  return new Uint8Array(bytes);
+}
+
+function encodeGif(
+  frames: Uint8Array[],
+  width: number,
+  height: number,
+  delayCentiseconds: number,
+): Blob {
+  const out: number[] = [];
+  writeAscii(out, 'GIF89a');
+  writeU16(out, width);
+  writeU16(out, height);
+  out.push(0xf7, 0x00, 0x00);
+  out.push(...make332Palette());
+
+  out.push(0x21, 0xff, 0x0b);
+  writeAscii(out, 'NETSCAPE2.0');
+  out.push(0x03, 0x01, 0x00, 0x00, 0x00);
+
+  for (const frame of frames) {
+    out.push(0x21, 0xf9, 0x04, 0x00);
+    writeU16(out, delayCentiseconds);
+    out.push(0x00, 0x00);
+
+    out.push(0x2c);
+    writeU16(out, 0);
+    writeU16(out, 0);
+    writeU16(out, width);
+    writeU16(out, height);
+    out.push(0x00);
+
+    out.push(0x08);
+    const encoded = gifLzwEncode(frame, 8);
+    for (let i = 0; i < encoded.length; i += 255) {
+      const len = Math.min(255, encoded.length - i);
+      out.push(len);
+      for (let j = 0; j < len; j++) out.push(encoded[i + j]);
+    }
+    out.push(0x00);
+  }
+
+  out.push(0x3b);
+  return new Blob([new Uint8Array(out)], { type: 'image/gif' });
+}
+
+async function exportComplexGif() {
+  if (!complexCoeffs.length) {
+    $('contourStatus').textContent = '请先手绘、输入文字或导入图片，再导出 GIF。';
+    return;
+  }
+
+  const button = $<HTMLButtonElement>('exportComplexGifBtn');
+  const oldLabel = button.textContent || '导出 GIF';
+  button.disabled = true;
+  button.classList.add('busy');
+  button.textContent = '正在生成 GIF…';
+
+  const oldTime = complexTime;
+  const oldTrace = complexTrace.map(p => ({ ...p }));
+  const oldPlaying = complexPlaying;
+  complexPlaying = false;
+
+  try {
+    const width = 360;
+    const height = Math.round(width * complexFourierCanvas.height / complexFourierCanvas.width);
+    const capture = document.createElement('canvas');
+    capture.width = width;
+    capture.height = height;
+    const captureCtx = capture.getContext('2d')!;
+    const frames: Uint8Array[] = [];
+    const frameCount = 36;
+
+    for (let frame = 0; frame < frameCount; frame++) {
+      complexTime = TWO_PI * frame / frameCount;
+      complexTrace = [];
+      const traceSteps = Math.max(2, Math.round(COMPLEX_SAMPLE_COUNT * (frame + 1) / frameCount));
+      for (let j = 0; j < traceSteps; j++) {
+        complexTrace.push(complexPointAtTime(TWO_PI * j / COMPLEX_SAMPLE_COUNT));
+      }
+
+      drawComplexFourier();
+      captureCtx.clearRect(0, 0, width, height);
+      captureCtx.drawImage(complexFourierCanvas, 0, 0, width, height);
+      frames.push(rgbaTo332(captureCtx.getImageData(0, 0, width, height)));
+
+      if (frame % 4 === 0) {
+        button.textContent = '生成 GIF ' + Math.round((frame + 1) / frameCount * 100) + '%';
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+      }
+    }
+
+    const gif = encodeGif(frames, width, height, 8);
+    downloadBlob(gif, 'fourier-studio-2d.gif');
+    $('contourStatus').textContent = 'GIF 已生成：36 帧，循环播放。';
+  } finally {
+    complexTime = oldTime;
+    complexTrace = oldTrace;
+    complexPlaying = oldPlaying;
+    drawComplexFourier();
+    button.disabled = false;
+    button.classList.remove('busy');
+    button.textContent = oldLabel;
+  }
+}
+
 function rasterKey(x2: number, y2: number): number {
   return y2 * 2048 + x2;
 }
