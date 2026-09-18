@@ -1107,8 +1107,11 @@ document.querySelectorAll('.mode-btn').forEach(button => {
 });
 errorCanvas.addEventListener('click', e => {
     const rect = errorCanvas.getBoundingClientRect();
-    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
-    const fraction = rect.width > 0 ? x / rect.width : 0;
+    const canvasX = (e.clientX - rect.left) / Math.max(1, rect.width) * errorCanvas.width;
+    const padLeft = 54;
+    const padRight = 22;
+    const plotWidth = errorCanvas.width - padLeft - padRight;
+    const fraction = Math.max(0, Math.min(1, (canvasX - padLeft) / Math.max(1, plotWidth)));
     const n = Math.max(1, Math.min(64, Math.round(fraction * 63) + 1));
     orderInput.value = String(n);
     updateAll();
