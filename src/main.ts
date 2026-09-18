@@ -331,7 +331,7 @@ function updateAnalytics() {
   updateCoeffRanking();
 }
 
-function setDisplayMode(mode: 'all' | 'one' | 'two') {
+function setDisplayMode(mode: 'all' | 'one' | 'fft' | 'two') {
   document.body.dataset.mode = mode;
   document.querySelectorAll<HTMLButtonElement>('.mode-btn').forEach(button => {
     button.classList.toggle('active', button.dataset.mode === mode);
@@ -1332,7 +1332,7 @@ mainCanvas.addEventListener('pointercancel', () => {
 document.querySelectorAll<HTMLButtonElement>('.mode-btn').forEach(button => {
   button.onclick = () => {
     const mode = button.dataset.mode;
-    if (mode === 'all' || mode === 'one' || mode === 'two') setDisplayMode(mode);
+    if (mode === 'all' || mode === 'one' || mode === 'fft' || mode === 'two') setDisplayMode(mode);
   };
 });
 
@@ -1462,10 +1462,10 @@ $('copyLatexBtn').onclick = async () => {
   setTimeout(() => button.textContent = old, 900);
 };
 
-let initialMode: 'all' | 'one' | 'two' = 'all';
+let initialMode: 'all' | 'one' | 'fft' | 'two' = 'all';
 try {
   const savedMode = localStorage.getItem('fourier-studio-mode');
-  if (savedMode === 'one' || savedMode === 'two' || savedMode === 'all') initialMode = savedMode;
+  if (savedMode === 'one' || savedMode === 'fft' || savedMode === 'two' || savedMode === 'all') initialMode = savedMode;
 } catch {
   // Keep the default mode if storage is unavailable.
 }
