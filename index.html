@@ -10,9 +10,9 @@
   <main class="app-shell">
     <header class="hero">
       <div>
-        <span class="eyebrow">FOURIER STUDIO · v0.3</span>
+        <span class="eyebrow">FOURIER STUDIO · v0.4</span>
         <h1>把一条曲线拆成一组正弦与余弦</h1>
-        <p>手绘周期函数，实时观察傅里叶级数、旋转相量、单阶谐波、频谱与重建误差。</p>
+        <p>从一维傅里叶级数到二维复傅里叶绘图：手绘、分解、旋转相量与动态重建。</p>
       </div>
       <div class="hero-badge">512 samples · up to 64 harmonics</div>
     </header>
@@ -86,6 +86,43 @@
         <span>角速度：nω</span>
         <span>相位：φₙ = atan2(aₙ,bₙ)</span>
         <span>橙色：当前选中谐波</span>
+      </div>
+    </section>
+
+    <section class="panel complex-panel">
+      <div class="panel-title">
+        <h2>二维复傅里叶绘图 / Complex Fourier Drawing</h2>
+        <span>把路径写成 z(t)=x(t)+iy(t)，再由复指数旋转向量重建</span>
+      </div>
+      <div class="complex-controls">
+        <button id="complexPlayBtn">暂停</button>
+        <button id="complexRestartBtn">从头播放</button>
+        <button id="complexClearBtn">清空并手绘</button>
+        <button id="complexDemoBtn">星形示例</button>
+        <label>频率阶数 K
+          <input id="complexOrder" type="range" min="1" max="60" value="18" />
+          <span id="complexOrderValue">18</span>
+        </label>
+        <label>速度
+          <input id="complexSpeed" type="range" min="0.25" max="3" step="0.25" value="1" />
+          <span id="complexSpeedValue">1.00×</span>
+        </label>
+      </div>
+      <div class="complex-grid">
+        <div>
+          <div class="canvas-caption">① 在这里按住鼠标/触控笔画一条路径</div>
+          <canvas id="complexDrawCanvas" width="680" height="520"></canvas>
+        </div>
+        <div>
+          <div class="canvas-caption">② 复傅里叶旋转圆自动重绘</div>
+          <canvas id="complexFourierCanvas" width="680" height="520"></canvas>
+        </div>
+      </div>
+      <div class="complex-status">
+        <span>重采样：<strong id="complexSampleValue">256</strong> 点</span>
+        <span>复系数：<strong id="complexCoeffValue">37</strong> 个</span>
+        <span>时间：<strong id="complexTimeValue">0.00</strong> rad</span>
+        <span>公式：cₖ = (1/M) Σ zⱼ e<sup>−i2πkj/M</sup></span>
       </div>
     </section>
 
