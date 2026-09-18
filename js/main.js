@@ -577,6 +577,7 @@ function complexCanvasPoint(e) {
     };
 }
 function loadComplexStarDemo() {
+    contourRasterReady = false;
     complexRawPath = [];
     const cx = complexDrawCanvas.width / 2;
     const cy = complexDrawCanvas.height / 2;
@@ -600,6 +601,7 @@ function loadComplexStarDemo() {
         }
     }
     rebuildComplexModel();
+    $('contourStatus').textContent = '当前：内置星形路径';
 }
 function drawEpicycle() {
     const ctx = epicycleCtx;
@@ -842,6 +844,8 @@ $('restartAnimationBtn').onclick = () => {
 };
 
 complexDrawCanvas.addEventListener('pointerdown', e => {
+    contourRasterReady = false;
+    $('contourStatus').textContent = '当前：手绘路径';
     complexDrawing = true;
     complexRawPath = [];
     complexTrace = [];
@@ -866,6 +870,18 @@ const finishComplexDraw = () => {
 };
 complexDrawCanvas.addEventListener('pointerup', finishComplexDraw);
 complexDrawCanvas.addEventListener('pointercancel', finishComplexDraw);
+$('contourTextBtn').onclick = () => renderTextContour();
+contourTextInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') renderTextContour();
+});
+contourImageInput.onchange = () => {
+    const file = contourImageInput.files?.[0];
+    if (file) importContourImage(file);
+};
+contourThresholdInput.oninput = () => {
+    $('contourThresholdValue').textContent = contourThresholdInput.value;
+    if (contourRasterReady) applyRasterContour('阈值更新');
+};
 complexOrderInput.oninput = () => rebuildComplexModel();
 complexSpeedInput.oninput = () => {
     $('complexSpeedValue').textContent = `${Number(complexSpeedInput.value).toFixed(2)}×`;
@@ -883,6 +899,7 @@ $('complexRestartBtn').onclick = () => {
     drawComplexFourier();
 };
 $('complexClearBtn').onclick = () => {
+    contourRasterReady = false;
     complexRawPath = [];
     complexSamples = [];
     complexCoeffs = [];
@@ -892,6 +909,7 @@ $('complexClearBtn').onclick = () => {
     drawComplexFourier();
     $('complexSampleValue').textContent = '0';
     $('complexCoeffValue').textContent = '0';
+    $('contourStatus').textContent = '画布已清空，可直接手绘，或使用上方文字 / 图片导入。';
 };
 $('complexDemoBtn').onclick = () => loadComplexStarDemo();
 $('resetBtn').onclick = () => loadPreset();
