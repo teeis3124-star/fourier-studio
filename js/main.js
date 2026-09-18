@@ -315,9 +315,7 @@ function rgbaTo332(data) {
 function gifLzwEncode(indices, minCodeSize = 8) {
     const clearCode = 1 << minCodeSize;
     const endCode = clearCode + 1;
-    let nextCode = endCode + 1;
-    let codeSize = minCodeSize + 1;
-    let dictionary = new Map();
+    const codeSize = minCodeSize + 1;
     const bytes = [];
     let bitBuffer = 0;
     let bitCount = 0;
@@ -330,38 +328,16 @@ function gifLzwEncode(indices, minCodeSize = 8) {
             bitCount -= 8;
         }
     };
-    const reset = () => {
-        dictionary = new Map();
-        nextCode = endCode + 1;
-        codeSize = minCodeSize + 1;
-    };
     emit(clearCode);
-    if (!indices.length) {
-        emit(endCode);
-        if (bitCount > 0) bytes.push(bitBuffer & 0xff);
-        return new Uint8Array(bytes);
-    }
-    let prefix = indices[0];
-    for (let i = 1; i < indices.length; i++) {
-        const value = indices[i];
-        const key = (prefix << 8) | value;
-        const existing = dictionary.get(key);
-        if (existing !== undefined) {
-            prefix = existing;
-            continue;
-        }
-        emit(prefix);
-        if (nextCode < 4096) {
-            dictionary.set(key, nextCode++);
-            if (nextCode === (1 << codeSize) && codeSize < 12) codeSize++;
-        }
-        else {
+    let sinceClear = 0;
+    for (let i = 0; i < indices.length; i++) {
+        if (sinceClear >= 200) {
             emit(clearCode);
-            reset();
+            sinceClear = 0;
         }
-        prefix = value;
+        emit(indices[i]);
+        sinceClear++;
     }
-    emit(prefix);
     emit(endCode);
     if (bitCount > 0) bytes.push(bitBuffer & 0xff);
     return new Uint8Array(bytes);
