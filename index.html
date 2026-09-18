@@ -10,9 +10,9 @@
   <main class="app-shell">
     <header class="hero">
       <div>
-        <span class="eyebrow">FOURIER STUDIO · v0.6</span>
+        <span class="eyebrow">FOURIER STUDIO · v0.7</span>
         <h1>把一条曲线拆成一组正弦与余弦</h1>
-        <p>从一维傅里叶级数到二维复傅里叶绘图：手绘、误差分析、轮廓导入、旋转相量与结果导出。</p>
+        <p>从傅里叶级数教学到真实波形 FFT：手绘、数据导入、频谱分析、信号重建与二维复傅里叶。</p>
       </div>
       <div class="hero-badge">512 samples · up to 64 harmonics</div>
     </header>
@@ -20,6 +20,7 @@
     <nav class="mode-switcher panel" aria-label="Fourier Studio 模式">
       <button class="mode-btn active" data-mode="all">总览</button>
       <button class="mode-btn" data-mode="one">一维傅里叶</button>
+      <button class="mode-btn" data-mode="fft">FFT 波形分析</button>
       <button class="mode-btn" data-mode="two">二维复傅里叶</button>
       <span class="mode-help">切换后只显示对应实验区；总览保留全部内容。</span>
     </nav>
@@ -95,6 +96,97 @@
         <span>角速度：nω</span>
         <span>相位：φₙ = atan2(aₙ,bₙ)</span>
         <span>橙色：当前选中谐波</span>
+      </div>
+    </section>
+
+    <section class="panel fft-panel mode-fft">
+      <div class="panel-title">
+        <h2>FFT 波形分析 / Signal Analyzer</h2>
+        <span>CSV / TXT / WAV → 预处理 → FFT → 幅频谱 / 相位 / PSD → 主频与重建</span>
+      </div>
+
+      <div class="fft-import">
+        <label class="file-button">导入 CSV / TXT
+          <input id="fftTextFile" type="file" accept=".csv,.txt,text/csv,text/plain" />
+        </label>
+        <label class="file-button">导入 WAV
+          <input id="fftWavFile" type="file" accept=".wav,audio/wav,audio/x-wav" />
+        </label>
+        <button id="fftPasteBtn">分析粘贴数据</button>
+        <button id="fftDemoBtn">加载示例信号</button>
+        <button id="fftExportCsvBtn">导出频谱 CSV</button>
+      </div>
+
+      <textarea id="fftPasteData" class="fft-paste" rows="5" spellcheck="false" placeholder="可直接粘贴数据。支持：
+time, amplitude
+0.000, 0.12
+0.001, 0.48
+...
+也支持只有一列幅值，此时使用右侧手动采样率。"></textarea>
+
+      <div class="fft-controls">
+        <label>采样率 fs
+          <input id="fftSampleRate" type="number" min="0.001" step="any" value="1000" />
+          <span>Hz</span>
+        </label>
+        <label>窗口函数
+          <select id="fftWindow">
+            <option value="hann" selected>Hann</option>
+            <option value="hamming">Hamming</option>
+            <option value="blackman">Blackman</option>
+            <option value="rect">Rectangular</option>
+          </select>
+        </label>
+        <label class="check-label"><input id="fftRemoveDc" type="checkbox" checked /> 去除直流分量</label>
+        <label>重建主频数
+          <input id="fftReconCount" type="range" min="1" max="20" value="5" />
+          <span id="fftReconCountValue">5</span>
+        </label>
+        <button id="fftAnalyzeBtn">重新分析</button>
+      </div>
+
+      <div id="fftStatus" class="fft-status">已准备示例信号：50 Hz + 120 Hz + 250 Hz</div>
+
+      <div class="fft-stats">
+        <div><span>采样点</span><strong id="fftSampleCount">—</strong></div>
+        <div><span>采样率</span><strong id="fftFsValue">—</strong></div>
+        <div><span>时长</span><strong id="fftDuration">—</strong></div>
+        <div><span>频率分辨率</span><strong id="fftResolution">—</strong></div>
+        <div><span>Nyquist</span><strong id="fftNyquist">—</strong></div>
+        <div><span>重建 RMS</span><strong id="fftReconRms">—</strong></div>
+      </div>
+
+      <div class="grid two fft-grid">
+        <article class="fft-subpanel">
+          <div class="panel-title"><h3>时域波形</h3><button id="fftTimePngBtn">PNG</button></div>
+          <canvas id="fftTimeCanvas" width="1100" height="330"></canvas>
+        </article>
+        <article class="fft-subpanel">
+          <div class="panel-title"><h3>幅频谱</h3><button id="fftAmpPngBtn">PNG</button></div>
+          <canvas id="fftAmpCanvas" width="1100" height="330"></canvas>
+        </article>
+      </div>
+
+      <div class="grid two fft-grid">
+        <article class="fft-subpanel">
+          <div class="panel-title"><h3>相位谱</h3><span>rad</span></div>
+          <canvas id="fftPhaseCanvas" width="1100" height="300"></canvas>
+        </article>
+        <article class="fft-subpanel">
+          <div class="panel-title"><h3>功率谱密度 PSD</h3><span>dB / Hz</span></div>
+          <canvas id="fftPsdCanvas" width="1100" height="300"></canvas>
+        </article>
+      </div>
+
+      <div class="grid two fft-grid">
+        <article class="fft-subpanel">
+          <div class="panel-title"><h3>主频分量</h3><span>局部峰值 + 抛物线插值</span></div>
+          <div id="fftPeakList" class="fft-peak-list"></div>
+        </article>
+        <article class="fft-subpanel">
+          <div class="panel-title"><h3>主频重建</h3><button id="fftReconPngBtn">PNG</button></div>
+          <canvas id="fftReconCanvas" width="1100" height="330"></canvas>
+        </article>
       </div>
     </section>
 
@@ -185,5 +277,6 @@
     <footer>Fourier Studio · browser-only · no external runtime dependency</footer>
   </main>
   <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/fft.js"></script>
 </body>
 </html>
