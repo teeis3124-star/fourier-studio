@@ -1,0 +1,10 @@
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+await mkdir('dist', { recursive: true });
+await cp('index.html', 'dist/index.html');
+await cp('style.css', 'dist/style.css');
+let html = await readFile('dist/index.html', 'utf8');
+const css = await readFile('style.css', 'utf8');
+const js = await readFile('dist/js/main.js', 'utf8');
+html = html.replace('<link rel="stylesheet" href="./style.css" />', `<style>${css}</style>`);
+html = html.replace('<script type="module" src="./js/main.js"></script>', `<script type="module">${js}</script>`);
+await writeFile('dist/Fourier-Studio.html', html);
