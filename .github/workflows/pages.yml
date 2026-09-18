@@ -36,7 +36,7 @@ jobs:
         run: |
           mkdir -p _site/js _site/docs
           cp index.html style.css _site/
-          cp js/main.js _site/js/
+          cp dist/js/*.js _site/js/
           cp docs/demo.svg _site/docs/
           touch _site/.nojekyll
 
