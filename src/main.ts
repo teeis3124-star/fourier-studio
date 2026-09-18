@@ -1309,6 +1309,7 @@ function updateAll(recalc = true) {
   updateFormula();
   updateStats();
   drawEpicycle();
+  if (recalc) updateAnalytics();
 }
 
 function pointerToSample(e: PointerEvent): { index: number; y: number } {
@@ -1358,6 +1359,29 @@ mainCanvas.addEventListener('pointercancel', () => {
   drawing = false;
   lastDrawIndex = null;
 });
+
+document.querySelectorAll<HTMLButtonElement>('.mode-btn').forEach(button => {
+  button.onclick = () => {
+    const mode = button.dataset.mode;
+    if (mode === 'all' || mode === 'one' || mode === 'two') setDisplayMode(mode);
+  };
+});
+
+errorCanvas.addEventListener('click', e => {
+  const rect = errorCanvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+  const fraction = rect.width > 0 ? x / rect.width : 0;
+  const n = Math.max(1, Math.min(64, Math.round(fraction * 63) + 1));
+  orderInput.value = String(n);
+  updateAll();
+});
+
+$('exportMainPngBtn').onclick = () => exportCanvasPng(mainCanvas, 'fourier-studio-time-domain.png');
+$('exportEpicyclePngBtn').onclick = () => exportCanvasPng(epicycleCanvas, 'fourier-studio-epicycles.png');
+$('exportComplexPngBtn').onclick = () => exportCanvasPng(complexFourierCanvas, 'fourier-studio-2d.png');
+$('exportComplexGifBtn').onclick = () => {
+  void exportComplexGif();
+};
 
 orderInput.oninput = () => updateAll();
 harmonicInput.oninput = () => updateAll(false);
@@ -1465,6 +1489,15 @@ $('copyLatexBtn').onclick = async () => {
   button.textContent = '已复制';
   setTimeout(() => button.textContent = old, 900);
 };
+
+let initialMode: 'all' | 'one' | 'two' = 'all';
+try {
+  const savedMode = localStorage.getItem('fourier-studio-mode');
+  if (savedMode === 'one' || savedMode === 'two' || savedMode === 'all') initialMode = savedMode;
+} catch {
+  // Keep the default mode if storage is unavailable.
+}
+setDisplayMode(initialMode);
 
 loadPreset('sine');
 loadComplexStarDemo();
