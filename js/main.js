@@ -5,19 +5,27 @@ const $ = (id) => document.getElementById(id);
 const mainCanvas = $('mainCanvas');
 const ampCanvas = $('ampCanvas');
 const phaseCanvas = $('phaseCanvas');
+const epicycleCanvas = $('epicycleCanvas');
 const mainCtx = mainCanvas.getContext('2d');
 const ampCtx = ampCanvas.getContext('2d');
 const phaseCtx = phaseCanvas.getContext('2d');
+const epicycleCtx = epicycleCanvas.getContext('2d');
 const orderInput = $('order');
 const harmonicInput = $('harmonic');
 const presetSelect = $('preset');
 const formulaEl = $('formula');
 const latexEl = $('latex');
 const compactFormula = $('compactFormula');
+const animationSpeedInput = $('animationSpeed');
 let samples = new Float64Array(SAMPLE_COUNT);
 let drawing = false;
 let lastDrawIndex = null;
 let coeff = { a0: 0, a: [], b: [] };
+let animationTime = 0;
+let animationPlaying = true;
+let lastFrameTime = 0;
+const waveTrace = [];
+const MAX_TRACE_POINTS = 440;
 function presetValue(kind, x) {
     const s = Math.sin(x);
     if (kind === 'sine') return Math.sin(x) + 0.35 * Math.sin(3 * x);
@@ -117,6 +125,126 @@ function drawSpectrum(ctx, canvas, values, phase = false) {
         ctx.beginPath(); ctx.moveTo(x, zeroY); ctx.lineTo(x, y); ctx.stroke();
     });
 }
+
+function drawEpicycle() {
+    const ctx = epicycleCtx;
+    const canvas = epicycleCanvas;
+    const w = canvas.width;
+    const h = canvas.height;
+    const nMax = +orderInput.value;
+    const selected = +harmonicInput.value;
+    const splitX = w * 0.45;
+    const graphX = w * 0.51;
+    const graphRight = w - 28;
+    const centerY = h / 2;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = '#172846';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 6; i++) {
+        const y = i * h / 6;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+    }
+    ctx.strokeStyle = '#314a75';
+    ctx.beginPath();
+    ctx.moveTo(splitX, 22);
+    ctx.lineTo(splitX, h - 22);
+    ctx.stroke();
+    ctx.strokeStyle = '#38527f';
+    ctx.beginPath();
+    ctx.moveTo(graphX, centerY);
+    ctx.lineTo(graphRight, centerY);
+    ctx.stroke();
+    let totalMagnitude = Math.abs(coeff.a0 / 2);
+    for (let n = 1; n <= nMax; n++) {
+        totalMagnitude += Math.hypot(coeff.a[n] || 0, coeff.b[n] || 0);
+    }
+    const availableRadius = Math.min(splitX * 0.35, h * 0.37);
+    const scale = availableRadius / Math.max(0.75, totalMagnitude);
+    let x = splitX * 0.43;
+    let y = centerY - (coeff.a0 / 2) * scale;
+    ctx.fillStyle = '#86b5ff';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('a₀ / 2', 18, 26);
+    for (let n = 1; n <= nMax; n++) {
+        const a = coeff.a[n] || 0;
+        const b = coeff.b[n] || 0;
+        const amplitude = Math.hypot(a, b);
+        const radius = amplitude * scale;
+        const phase = Math.atan2(a, b);
+        const theta = n * animationTime + phase;
+        const dx = amplitude * Math.cos(theta) * scale;
+        const dy = -amplitude * Math.sin(theta) * scale;
+        const active = n === selected;
+        if (radius > 0.7) {
+            ctx.save();
+            ctx.globalAlpha = active ? 0.95 : 0.28;
+            ctx.strokeStyle = active ? '#ffb347' : '#78a8ff';
+            ctx.lineWidth = active ? 2.4 : 1.2;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, TWO_PI);
+            ctx.stroke();
+            ctx.restore();
+        }
+        ctx.strokeStyle = active ? '#ffb347' : '#7f9fcf';
+        ctx.lineWidth = active ? 2.8 : 1.35;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + dx, y + dy);
+        ctx.stroke();
+        if (active && radius > 9) {
+            ctx.fillStyle = '#ffd18f';
+            ctx.font = '12px system-ui, sans-serif';
+            ctx.fillText(`n=${n}`, x + 7, y - 7);
+        }
+        x += dx;
+        y += dy;
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x, y, 4.5, 0, TWO_PI);
+    ctx.fill();
+    ctx.setLineDash([7, 7]);
+    ctx.strokeStyle = '#788eaf';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(graphX, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (waveTrace.length > 1) {
+        ctx.strokeStyle = '#f3f6ff';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        const graphWidth = graphRight - graphX;
+        for (let i = 0; i < waveTrace.length; i++) {
+            const px = graphX + i * graphWidth / (MAX_TRACE_POINTS - 1);
+            const py = centerY - waveTrace[i] * scale;
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+    }
+    ctx.fillStyle = '#8da4c8';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('旋转相量链', 18, h - 18);
+    ctx.fillText('端点随时间扫出的 N 阶重建波形 →', graphX, h - 18);
+    $('timeValue').textContent = animationTime.toFixed(2);
+}
+function animate(now) {
+    const dt = lastFrameTime === 0 ? 0 : Math.min(0.05, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+    if (animationPlaying) {
+        const speed = +animationSpeedInput.value;
+        animationTime = (animationTime + dt * 0.9 * speed) % TWO_PI;
+        waveTrace.unshift(reconstruct(animationTime, +orderInput.value));
+        if (waveTrace.length > MAX_TRACE_POINTS)
+            waveTrace.pop();
+        drawEpicycle();
+    }
+    requestAnimationFrame(animate);
+}
 function fmt(value) {
     const v = Math.abs(value) < 5e-4 ? 0 : value;
     return Number(v.toFixed(3)).toString();
@@ -159,7 +287,10 @@ function updateStats() {
 }
 function updateAll(recalc = true) {
     const nMax = +orderInput.value;
-    if (recalc) coeff = calculateCoefficients(nMax);
+    if (recalc) {
+        coeff = calculateCoefficients(nMax);
+        waveTrace.length = 0;
+    }
     harmonicInput.max = String(nMax);
     if (+harmonicInput.value > nMax) harmonicInput.value = String(nMax);
     $('orderValue').textContent = orderInput.value;
@@ -169,6 +300,7 @@ function updateAll(recalc = true) {
     drawSpectrum(phaseCtx, phaseCanvas, Array.from({ length: nMax }, (_, i) => Math.atan2(-coeff.b[i + 1], coeff.a[i + 1])), true);
     updateFormula();
     updateStats();
+    drawEpicycle();
 }
 function pointerToSample(e) {
     const rect = mainCanvas.getBoundingClientRect();
@@ -207,6 +339,23 @@ orderInput.oninput = () => updateAll();
 harmonicInput.oninput = () => updateAll(false);
 presetSelect.onchange = () => loadPreset();
 compactFormula.onchange = () => updateFormula();
+animationSpeedInput.oninput = () => {
+    $('speedValue').textContent = `${Number(animationSpeedInput.value).toFixed(2)}×`;
+};
+$('playBtn').onclick = () => {
+    animationPlaying = !animationPlaying;
+    $('playBtn').textContent = animationPlaying ? '暂停' : '继续';
+    lastFrameTime = performance.now();
+    drawEpicycle();
+};
+$('restartAnimationBtn').onclick = () => {
+    animationTime = 0;
+    waveTrace.length = 0;
+    animationPlaying = true;
+    $('playBtn').textContent = '暂停';
+    lastFrameTime = performance.now();
+    drawEpicycle();
+};
 $('resetBtn').onclick = () => loadPreset();
 $('clearBtn').onclick = () => { samples.fill(0); updateAll(); };
 $('copyLatexBtn').onclick = async () => {
@@ -216,3 +365,5 @@ $('copyLatexBtn').onclick = async () => {
     setTimeout(() => b.textContent = old, 900);
 };
 loadPreset('sine');
+lastFrameTime = performance.now();
+requestAnimationFrame(animate);
