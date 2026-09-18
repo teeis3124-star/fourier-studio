@@ -1102,7 +1102,7 @@ mainCanvas.addEventListener('pointercancel', () => { drawing = false; lastDrawIn
 document.querySelectorAll('.mode-btn').forEach(button => {
     button.onclick = () => {
         const mode = button.dataset.mode;
-        if (mode === 'all' || mode === 'one' || mode === 'two') setDisplayMode(mode);
+        if (mode === 'all' || mode === 'one' || mode === 'fft' || mode === 'two') setDisplayMode(mode);
     };
 });
 errorCanvas.addEventListener('click', e => {
@@ -1224,7 +1224,7 @@ $('copyLatexBtn').onclick = async () => {
 let initialMode = 'all';
 try {
     const savedMode = localStorage.getItem('fourier-studio-mode');
-    if (savedMode === 'one' || savedMode === 'two' || savedMode === 'all') initialMode = savedMode;
+    if (savedMode === 'one' || savedMode === 'fft' || savedMode === 'two' || savedMode === 'all') initialMode = savedMode;
 }
 catch {
 }
