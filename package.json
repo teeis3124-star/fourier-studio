@@ -6,7 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc && node scripts/build.mjs",
-    "test": "npm run typecheck && npm run build"
+    "test": "npm run typecheck && node --test tests/fft.test.mjs && npm run build"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
